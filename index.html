@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trình Tải Ảnh Lấy URL Vĩnh Viễn - Cloudinary API</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.5);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.8);
+    }
+
+    /* Glassmorphism styling */
+    .glass {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    .dark .glass-card {
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Drag & Drop Highlight */
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(99, 102, 241, 0.4); }
+      50% { border-color: rgba(99, 102, 241, 1); }
+    }
+    .drag-over {
+      animation: pulse-border 1.5s infinite;
+      background-color: rgba(99, 102, 241, 0.08) !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300 relative overflow-x-hidden">
+
+  <!-- Glowing Animated Background Spheres -->
+  <div class="fixed top-0 left-1/4 w-96 h-96 bg-indigo-500/20 dark:bg-indigo-600/20 rounded-full filter blur-3xl pointer-events-none -z-10 animate-pulse"></div>
+  <div class="fixed bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 dark:bg-purple-600/20 rounded-full filter blur-3xl pointer-events-none -z-10 animate-pulse" style="animation-delay: 1s;"></div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-30 glass border-b border-slate-200/50 dark:border-slate-800/50">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Logo -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+            Cloudinary Fast Uploader
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Lưu trữ ảnh vĩnh viễn - Lấy URL tức thì</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-2">
+        <!-- Theme Toggle Button -->
+        <button id="btnThemeToggle" class="p-2.5 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition text-slate-600 dark:text-slate-300" title="Chuyển chế độ Sáng/Tối">
+          <i class="fa-solid fa-moon text-lg dark:hidden"></i>
+          <i class="fa-solid fa-sun text-lg hidden dark:block text-amber-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+    <!-- API Config Banner Info -->
+    <div id="configInfoBanner" class="glass-card border-l-4 border-indigo-500 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start space-x-3">
+        <i class="fa-solid fa-code text-indigo-500 text-lg mt-0.5 flex-shrink-0"></i>
+        <div class="text-sm">
+          <span class="font-semibold text-slate-800 dark:text-slate-200">Cấu hình API trực tiếp trong mã nguồn:</span>
+          <p class="text-slate-600 dark:text-slate-400 text-xs mt-0.5">
+            Thay thế hằng số <code class="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 rounded font-mono font-bold">CLOUD_NAME</code> và <code class="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 rounded font-mono font-bold">UPLOAD_PRESET</code> trong thẻ <code class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-mono">&lt;script&gt;</code> để bắt đầu sử dụng.
+          </p>
+        </div>
+      </div>
+      <div id="configStatusBadge" class="px-3 py-1 text-xs font-semibold rounded-full flex-shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+        Chưa nhập API
+      </div>
+    </div>
+
+    <!-- Upload Box Section -->
+    <section class="glass rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <div class="text-center max-w-lg mx-auto mb-6">
+        <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Tải Ảnh Lên Cloudinary</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Kéo thả ảnh, chọn tệp từ máy hoặc nhấn Ctrl+V để dán ảnh trực tiếp</p>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div id="dropZone" class="border-2 border-dashed border-indigo-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl p-6 sm:p-10 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center min-h-[240px] group relative">
+        <input type="file" id="fileInput" accept="image/*" class="hidden" />
+
+        <!-- Initial Placeholder UI -->
+        <div id="dropZoneContent" class="flex flex-col items-center">
+          <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-slate-800 text-indigo-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200 shadow-inner">
+            <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+          </div>
+          <p class="text-base font-semibold text-slate-700 dark:text-slate-200">
+            Kéo và thả ảnh vào đây, hoặc <span class="text-indigo-600 dark:text-indigo-400 hover:underline">Chọn tệp</span>
+          </p>
+          <p class="text-xs text-slate-400 dark:text-slate-500 mt-2">
+            Hỗ trợ PNG, JPG, JPEG, GIF, WEBP, SVG (Tối đa 10MB)
+          </p>
+          <div class="mt-4 px-3 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
+            <i class="fa-regular fa-paste"></i>
+            <span>Dán ảnh nhanh từ bộ nhớ tạm bằng <kbd class="px-1.5 py-0.5 text-xs bg-slate-300 dark:bg-slate-700 rounded font-mono text-slate-700 dark:text-slate-300">Ctrl + V</kbd></span>
+          </div>
+        </div>
+
+        <!-- Preview UI (Hidden initially) -->
+        <div id="previewContainer" class="hidden w-full flex-col items-center">
+          <div class="relative max-h-[220px] max-w-full rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 shadow-md group/img">
+            <img id="imagePreview" src="" alt="Preview Image" class="max-h-[220px] w-auto object-contain rounded-lg" />
+            <button id="btnRemovePreview" class="absolute top-2 right-2 w-8 h-8 bg-red-500/80 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow backdrop-blur transition" title="Hủy chọn ảnh">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div id="fileDetail" class="mt-3 text-xs text-slate-500 dark:text-slate-400 font-medium"></div>
+        </div>
+      </div>
+
+      <!-- Upload Progress Bar (Hidden initially) -->
+      <div id="uploadProgress" class="hidden mt-6 space-y-2">
+        <div class="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <span id="progressStatus">Đang tải lên Cloudinary...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+          <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full transition-all duration-200" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Submit Upload Button -->
+      <div class="mt-6 flex justify-center">
+        <button id="btnUpload" disabled class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-upload"></i>
+          <span>Tải Lên Lấy URL</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Upload Result Section (Hidden initially) -->
+    <section id="resultSection" class="hidden glass rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+      <div class="flex items-center space-x-3 text-emerald-500 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <i class="fa-solid fa-circle-check text-2xl"></i>
+        <h3 class="text-xl font-bold text-slate-800 dark:text-white">Tải lên thành công!</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Image Preview Box -->
+        <div class="md:col-span-1 flex flex-col items-center justify-center bg-slate-900/5 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200 dark:border-slate-800">
+          <img id="resultImage" src="" alt="Uploaded Image" class="max-h-52 object-contain rounded-lg shadow-sm" />
+          <a id="btnOpenDirect" href="#" target="_blank" class="mt-3 text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium">
+            <span>Mở ảnh gốc tab mới</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
+
+        <!-- Links Outputs -->
+        <div class="md:col-span-2 space-y-4">
+          <!-- Direct URL -->
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">URL Trực Tiếp (Direct Link)</label>
+            <div class="flex">
+              <input type="text" id="urlDirect" readonly class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-l-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-300 font-mono" />
+              <button onclick="copyToClipboard('urlDirect', 'Đã sao chép URL trực tiếp!')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-r-xl transition flex items-center justify-center text-sm font-medium" title="Sao chép">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Markdown -->
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cú pháp Markdown</label>
+            <div class="flex">
+              <input type="text" id="urlMarkdown" readonly class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-l-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-300 font-mono" />
+              <button onclick="copyToClipboard('urlMarkdown', 'Đã sao chép mã Markdown!')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-r-xl transition flex items-center justify-center text-sm font-medium" title="Sao chép">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- HTML Tag -->
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thẻ Nhúng HTML &lt;img&gt;</label>
+            <div class="flex">
+              <input type="text" id="urlHTML" readonly class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-l-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-300 font-mono" />
+              <button onclick="copyToClipboard('urlHTML', 'Đã sao chép thẻ nhúng HTML!')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-r-xl transition flex items-center justify-center text-sm font-medium" title="Sao chép">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent History Section -->
+    <section class="glass rounded-2xl p-6 sm:p-8 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-clock-rotate-left text-indigo-500 text-lg"></i>
+          <h3 class="font-bold text-lg text-slate-800 dark:text-white">Lịch Sử Upload Gần Đây</h3>
+        </div>
+        <button id="btnClearHistory" class="text-xs text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition flex items-center gap-1">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>Xóa lịch sử</span>
+        </button>
+      </div>
+
+      <!-- History Items Grid -->
+      <div id="historyList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <!-- Placeholder for empty state -->
+        <div id="emptyHistory" class="col-span-full py-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+          Chưa có lịch sử tải ảnh nào.
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Alert Floating Box -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out flex items-center space-x-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl border border-slate-800 dark:border-slate-200 max-w-sm pointer-events-none">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 dark:text-emerald-600 text-lg"></i>
+    <span id="toastMessage" class="text-sm font-medium">Thông báo</span>
+  </div>
+
+  <!-- JavaScript Code Application Logic -->
+  <script>
+    /* =====================================================================
+     * CẤU HÌNH API CLOUDINARY TRỰC TIẾP TẠI ĐÂY
+     * ---------------------------------------------------------------------
+     * 1. CLOUD_NAME: Tên tài khoản Cloudinary của bạn
+     * 2. UPLOAD_PRESET: Tên Unsigned Upload Preset tạo tại Cloudinary Settings
+     * ===================================================================== */
+    const CLOUD_NAME = "YOUR_CLOUD_NAME"; 
+    const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET";
+
+    // Application State Variables
+    let selectedFile = null;
+    let uploadHistory = JSON.parse(localStorage.getItem('cloudinary_direct_history') || '[]');
+
+    // DOM Element References
+    const btnThemeToggle = document.getElementById('btnThemeToggle');
+    const configStatusBadge = document.getElementById('configStatusBadge');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const dropZoneContent = document.getElementById('dropZoneContent');
+    const previewContainer = document.getElementById('previewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const btnRemovePreview = document.getElementById('btnRemovePreview');
+    const fileDetail = document.getElementById('fileDetail');
+    const btnUpload = document.getElementById('btnUpload');
+
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressStatus = document.getElementById('progressStatus');
+
+    const resultSection = document.getElementById('resultSection');
+    const resultImage = document.getElementById('resultImage');
+    const btnOpenDirect = document.getElementById('btnOpenDirect');
+    const urlDirect = document.getElementById('urlDirect');
+    const urlMarkdown = document.getElementById('urlMarkdown');
+    const urlHTML = document.getElementById('urlHTML');
+
+    const historyList = document.getElementById('historyList');
+    const emptyHistory = document.getElementById('emptyHistory');
+    const btnClearHistory = document.getElementById('btnClearHistory');
+
+    // On DOM Load Init App
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      checkApiConfig();
+      renderHistory();
+    });
+
+    // Theme Management
+    function initTheme() {
+      const isDark = localStorage.getItem('theme') === 'dark' || 
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    btnThemeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+
+    // Check Cloudinary API credentials
+    function checkApiConfig() {
+      if (!CLOUD_NAME || !UPLOAD_PRESET || CLOUD_NAME === "YOUR_CLOUD_NAME" || UPLOAD_PRESET === "YOUR_UPLOAD_PRESET") {
+        configStatusBadge.textContent = "Chưa thay API vào Code";
+        configStatusBadge.className = "px-3 py-1 text-xs font-semibold rounded-full flex-shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20";
+        return false;
+      } else {
+        configStatusBadge.textContent = "Đã cấu hình API";
+        configStatusBadge.className = "px-3 py-1 text-xs font-semibold rounded-full flex-shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20";
+        return true;
+      }
+    }
+
+    // Drag & Drop / File Select Handlers
+    dropZone.addEventListener('click', (e) => {
+      if (e.target.closest('#btnRemovePreview')) return;
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleSelectedFile(e.target.files[0]);
+      }
+    });
+
+    // Drag & Drop visual feedback
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('drag-over');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        handleSelectedFile(files[0]);
+      }
+    });
+
+    // Clipboard Paste Listener (Ctrl+V / Cmd+V)
+    window.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (let index in items) {
+        const item = items[index];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          handleSelectedFile(blob);
+          showToast('Đã dán ảnh từ bộ nhớ tạm!');
+          break;
+        }
+      }
+    });
+
+    function handleSelectedFile(file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('Vui lòng chọn định dạng tệp hình ảnh!', 'error');
+        return;
+      }
+
+      // 10MB Limit Check
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('Dung lượng tệp tối đa cho phép là 10MB!', 'error');
+        return;
+      }
+
+      selectedFile = file;
+
+      // Render Image Preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imagePreview.src = e.target.result;
+        dropZoneContent.classList.add('hidden');
+        previewContainer.classList.remove('hidden');
+        previewContainer.classList.add('flex');
+        fileDetail.textContent = `${file.name || 'Ảnh từ Clipboard'} (${formatBytes(file.size)})`;
+        btnUpload.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    btnRemovePreview.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetFileSelection();
+    });
+
+    function resetFileSelection() {
+      selectedFile = null;
+      fileInput.value = '';
+      imagePreview.src = '';
+      previewContainer.classList.add('hidden');
+      previewContainer.classList.remove('flex');
+      dropZoneContent.classList.remove('hidden');
+      btnUpload.disabled = true;
+    }
+
+    // Cloudinary Upload Handler
+    btnUpload.addEventListener('click', async () => {
+      if (!checkApiConfig()) {
+        showToast('Vui lòng thay CLOUD_NAME & UPLOAD_PRESET trong thẻ script trước!', 'error');
+        return;
+      }
+
+      if (!selectedFile) {
+        showToast('Vui lòng chọn hoặc dán 1 hình ảnh trước!', 'error');
+        return;
+      }
+
+      btnUpload.disabled = true;
+      uploadProgress.classList.remove('hidden');
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+      progressStatus.textContent = 'Đang khởi tạo kết nối...';
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('upload_preset', UPLOAD_PRESET);
+
+      try {
+        const xhr = new XMLHttpRequest();
+        const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+            progressStatus.textContent = percent === 100 ? 'Đang xử lý tạo URL...' : 'Đang tải ảnh lên...';
+          }
+        });
+
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            uploadProgress.classList.add('hidden');
+            btnUpload.disabled = false;
+
+            if (xhr.status === 200) {
+              const response = JSON.parse(xhr.responseText);
+              handleUploadSuccess(response);
+            } else {
+              let errorMsg = 'Tải lên thất bại!';
+              try {
+                const res = JSON.parse(xhr.responseText);
+                if (res.error && res.error.message) {
+                  errorMsg += ` ${res.error.message}`;
+                }
+              } catch (e) {}
+              showToast(errorMsg, 'error');
+            }
+          }
+        };
+
+        xhr.open('POST', uploadUrl, true);
+        xhr.send(formData);
+
+      } catch (err) {
+        uploadProgress.classList.add('hidden');
+        btnUpload.disabled = false;
+        showToast('Lỗi kết nối tới máy chủ Cloudinary!', 'error');
+      }
+    });
+
+    function handleUploadSuccess(data) {
+      const secureUrl = data.secure_url;
+      
+      // Update Results Box
+      resultImage.src = secureUrl;
+      btnOpenDirect.href = secureUrl;
+      urlDirect.value = secureUrl;
+      urlMarkdown.value = `![Image](${secureUrl})`;
+      urlHTML.value = `<img src="${secureUrl}" alt="Uploaded Image" />`;
+
+      resultSection.classList.remove('hidden');
+      resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // Save into Recent History
+      const historyItem = {
+        id: data.public_id,
+        url: secureUrl,
+        filename: selectedFile.name || 'Image',
+        createdAt: new Date().toLocaleDateString('vi-VN')
+      };
+
+      uploadHistory.unshift(historyItem);
+      if (uploadHistory.length > 20) uploadHistory.pop();
+
+      localStorage.setItem('cloudinary_direct_history', JSON.stringify(uploadHistory));
+      renderHistory();
+
+      showToast('Tải ảnh thành công vĩnh viễn!');
+      resetFileSelection();
+    }
+
+    // Render Recent History items
+    function renderHistory() {
+      if (uploadHistory.length === 0) {
+        historyList.innerHTML = '';
+        historyList.appendChild(emptyHistory);
+        emptyHistory.classList.remove('hidden');
+        return;
+      }
+
+      emptyHistory.classList.add('hidden');
+      historyList.innerHTML = '';
+
+      uploadHistory.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'glass-card rounded-xl p-2.5 flex flex-col items-center group relative overflow-hidden transition hover:shadow-md border border-slate-200/60 dark:border-slate-800/60';
+        
+        card.innerHTML = `
+          <div class="w-full h-28 bg-slate-900/5 dark:bg-slate-900/40 rounded-lg overflow-hidden flex items-center justify-center relative mb-2">
+            <img src="${item.url}" alt="History image" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <div class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button onclick="copyDirectString('${item.url}')" class="w-8 h-8 rounded-full bg-white text-slate-800 flex items-center justify-center shadow hover:bg-indigo-50 transition" title="Sao chép URL">
+                <i class="fa-regular fa-copy text-xs"></i>
+              </button>
+              <a href="${item.url}" target="_blank" class="w-8 h-8 rounded-full bg-white text-slate-800 flex items-center justify-center shadow hover:bg-indigo-50 transition" title="Mở tab mới">
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+              </a>
+            </div>
+          </div>
+          <div class="w-full px-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span class="truncate max-w-[100px] font-medium" title="${item.filename}">${item.filename}</span>
+            <span class="text-[10px] text-slate-400">${item.createdAt}</span>
+          </div>
+        `;
+        historyList.appendChild(card);
+      });
+    }
+
+    // Clear History
+    btnClearHistory.addEventListener('click', () => {
+      if (uploadHistory.length === 0) return;
+      
+      if (confirm('Bạn có chắc muốn xóa tất cả lịch sử đã lưu trong trình duyệt?')) {
+        uploadHistory = [];
+        localStorage.removeItem('cloudinary_direct_history');
+        renderHistory();
+        showToast('Đã xóa toàn bộ lịch sử!');
+      }
+    });
+
+    // Copying Helper
+    function copyToClipboard(elementId, successMsg) {
+      const input = document.getElementById(elementId);
+      input.select();
+      input.setSelectionRange(0, 99999);
+
+      try {
+        document.execCommand('copy');
+        showToast(successMsg || 'Đã sao chép!');
+      } catch (err) {
+        showToast('Không thể sao chép!', 'error');
+      }
+    }
+
+    function copyDirectString(str) {
+      const tempInput = document.createElement('input');
+      tempInput.value = str;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('Đã sao chép URL!');
+    }
+
+    // Toast Alert Notification Utility
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMessage.textContent = message;
+
+      if (type === 'error') {
+        toastIcon.className = 'fa-solid fa-circle-exclamation text-red-500 text-lg';
+      } else {
+        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 dark:text-emerald-500 text-lg';
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    // Format Byte Size
+    function formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html>
